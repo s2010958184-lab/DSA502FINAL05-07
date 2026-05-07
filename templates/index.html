@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Movie Metadata RAG Assistant</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-2: #273449;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #818cf8;
+      --good: #34d399;
+      --bad: #f87171;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(180deg, #0b1224 0%, #0f172a 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: -0.01em;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--panel-2);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    form {
+      margin-top: 22px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    input[type="text"] {
+      flex: 1 1 480px;
+      background: #0b1224;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+    }
+    button {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #0b1224;
+      font-weight: 600;
+      border: 0;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button:hover { filter: brightness(1.07); }
+    .examples {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .examples code {
+      background: var(--panel-2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .section {
+      margin-top: 26px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 18px 8px;
+    }
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      color: var(--accent);
+    }
+    .answer {
+      white-space: pre-wrap;
+      line-height: 1.55;
+      background: #0b1224;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--good);
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .error {
+      background: #2a1414;
+      border: 1px solid #7f1d1d;
+      color: #fecaca;
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .score {
+      font-variant-numeric: tabular-nums;
+      color: var(--good);
+      font-weight: 600;
+    }
+    .overview {
+      color: var(--muted);
+      max-width: 460px;
+    }
+    details {
+      margin-top: 12px;
+    }
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    pre.context {
+      background: #0b1224;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      white-space: pre-wrap;
+      font-size: 13px;
+      color: var(--muted);
+      max-height: 360px;
+      overflow: auto;
+    }
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Movie Metadata RAG Assistant</h1>
+      <p>
+        <span class="badge">Flask</span>
+        <span class="badge">TF-IDF retrieval</span>
+        <span class="badge">Ollama: {{ model }}</span>
+        <span class="badge">{{ "{:,}".format(dataset_size) }} movies</span>
+      </p>
+    </header>
+
+    <form method="post" action="/">
+      <input
+        type="text"
+        name="question"
+        placeholder="Ask a movie question (e.g. Find movies about space travel and exploration.)"
+        value="{{ question }}"
+        autofocus
+        autocomplete="off"
+      />
+      <button type="submit">Ask</button>
+      <div class="examples" style="flex-basis:100%">
+        Try:
+        <code onclick="document.querySelector('input[name=question]').value=this.innerText">Find movies about space travel and exploration.</code>
+        <code onclick="document.querySelector('input[name=question]').value=this.innerText">What are some high-rated drama movies in this dataset?</code>
+        <code onclick="document.querySelector('input[name=question]').value=this.innerText">Find movies with romance and comedy elements.</code>
+      </div>
+    </form>
+
+    {% if error %}
+      <div class="error"><strong>Error:</strong> {{ error }}</div>
+    {% endif %}
+
+    {% if answer %}
+      <div class="section">
+        <h2>Grounded Answer</h2>
+        <div class="answer">{{ answer }}</div>
+      </div>
+    {% endif %}
+
+    {% if rows %}
+      <div class="section">
+        <h2>Top {{ rows|length }} Retrieved Movies</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Score</th>
+              <th>Title</th>
+              <th>Release</th>
+              <th>Rating</th>
+              <th>Genres</th>
+              <th>Overview</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td class="score">{{ "%.4f"|format(r.score) }}</td>
+                <td><strong>{{ r.title }}</strong></td>
+                <td>{{ r.release_date }}</td>
+                <td>{{ r.vote_average }}</td>
+                <td>{{ r.genres }}</td>
+                <td class="overview">{{ r.overview }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <details>
+          <summary>Show context block sent to the LLM</summary>
+          <pre class="context">{{ context_preview }}</pre>
+        </details>
+      </div>
+    {% endif %}
+
+    <footer>
+      DSA 502 S26 mini-project &middot; Sadik &middot; running on port 5005
+    </footer>
+  </div>
+</body>
+</html>
